@@ -574,7 +574,19 @@ export class AIConversationEngine {
   generateReanAiResponse(userText, lowerText, avgConfidence, lang, noiseLevel) {
     let reply = "";
 
+    // Handle rejection of the initial greeting
     if (this.currentStep === "OPENING") {
+      const declinedGreeting = /\b(?:no|nahi|nhi|nahin|not now|no thanks|busy|not interested|cannot talk|can't talk|call later|drop me|skip|don't call|no call)\b|नहीं|ना|जरूरत नहीं|नहीं चाहिए|व्यस्त/i.test(lowerText);
+
+      if (declinedGreeting) {
+        this.state.resolution_status = "CALLER_DECLINED";
+        this.currentStep = "COMPLETED";
+        const closing = lang === "Hindi"
+          ? "कोई बात नहीं, समझ गया। यदि आपको बाद में सहायता चाहिए तो किसी भी समय कॉल कर सकते हैं। धन्यवाद, शुभ दिन!"
+          : "No problem at all, I completely understand. If you'd like to talk later, feel free to reach out anytime. Thank you and have a great day!";
+        return { agentReply: closing, shouldEscalate: false, escalationReason: "" };
+      }
+
       this.currentStep = "DIAGNOSING";
     }
 
@@ -692,6 +704,20 @@ export class AIConversationEngine {
 
     // Contextual Information Gathering (scenario-aware)
     const scenario = this.activeScenario?.id || 'wifi_support';
+
+    // Honor a decline / refusal to continue. Only treat it as a decline when
+    // the response is a short, standalone refusal (e.g. "no", "not now"),
+    // so legitimate "no" answers to real questions still proceed.
+    const declinedFlow = /\b(?:no|nahi|nhi|nahin|no thanks|not now|not interested|stop|end call|hang up|goodbye|skip|enough|leave me)\b|नहीं|ना|जरूरत नहीं|नहीं चाहिए|बंद कर|बात नहीं|रुक/i.test(lowerText);
+    const isShortRefusal = userText.trim().split(/\s+/).length <= 4;
+    if (declinedFlow && isShortRefusal) {
+      this.state.resolution_status = "CALLER_DECLINED";
+      this.currentStep = "COMPLETED";
+      const closing = lang === "Hindi"
+        ? "कोई बात नहीं, समझ गया। यदि आपको बाद में सहायता चाहिए तो किसी भी समय कॉल कर सकते हैं। धन्यवाद, शुभ दिन!"
+        : "No problem at all, I completely understand. If you'd like to continue later, feel free to reach out anytime. Thank you and have a great day!";
+      return { agentReply: closing, shouldEscalate: false, escalationReason: "" };
+    }
 
     // Q1: Ask Name First
     if (!this.state.customer_name && !this.askedQuestions.has("customer_name")) {
