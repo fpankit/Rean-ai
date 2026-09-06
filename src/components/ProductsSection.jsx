@@ -222,6 +222,8 @@ export default function ProductsSection({ onStartDemoCall, onOpenAgoraModal }) {
                   onClick={() => {
                     if (prod.ctaAction === 'home') {
                       window.open('https://smh-three-pi.vercel.app/', '_blank', 'noopener,noreferrer');
+                    } else if (prod.ctaAction === 'jarvis') {
+                      window.open('https://jarvis-voicemail.vercel.app/', '_blank', 'noopener,noreferrer');
                     } else {
                       onStartDemoCall();
                     }
